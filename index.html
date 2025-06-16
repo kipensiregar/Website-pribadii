@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CT CATERING - Kasir Offline</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4CAF50" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f5f5f5; color: #333; }
+    h2, h3, h4 { text-align: center; color: #444; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    label { font-weight: 600; display: block; margin-top: 10px; }
+    input, select {
+      margin: 5px 0;
+      padding: 10px;
+      width: 100%;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 5px;
+      display: block;
+      margin: 10px auto;
+      width: fit-content;
+    }
+    button:hover { background-color: #45a049; }
+    .btn-hapus {
+      background: #e53935;
+      color: white;
+      border: none;
+      padding: 3px 8px;
+      font-size: 12px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    #keranjang ul { list-style: none; padding: 0; }
+    #keranjang li { margin: 6px 0; background: #f0f0f0; padding: 6px; border-radius: 5px; }
+    #struk {
+      width: 300px;
+      font-family: monospace;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #000;
+      margin: 30px auto;
+      display: none;
+    }
+    table { width: 100%; font-size: 14px; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 4px 8px; border: 1px solid #ccc; text-align: left; }
+    hr { border: 0; border-top: 1px dashed #aaa; margin: 10px 0; }
+    .merah { color: red; font-weight: bold; }
+    small { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Kasir CT CATERING</h2>
+
+    <label for="produk">Pilih Produk</label>
+    <select id="produk"></select>
+
+    <label for="jumlah">Jumlah</label>
+    <input type="number" id="jumlah" value="1">
+
+    <button onclick="tambahProduk()">Tambah ke Keranjang</button>
+
+    <div id="keranjang"></div>
+
+    <label for="namaPembeli">Nama Pembeli</label>
+    <input type="text" id="namaPembeli">
+
+    <label for="notePembeli">Note Pembeli</label>
+    <input type="text" id="notePembeli">
+
+    <label for="bayar">Bayar</label>
+    <input type="number" id="bayar">
+
+    <button onclick="cetakStruk()">Cetak Struk</button>
+  </div>
+
+  <div id="struk"></div>
+
+  <div class="container">
+    <h3>Tambah Produk Baru</h3>
+    <input type="text" id="produkBaru" placeholder="Nama Produk">
+    <input type="number" id="hargaBaru" placeholder="Harga">
+    <button onclick="tambahKeSelect()">Tambah Produk</button>
+    <table id="tabelProduk">
+      <thead><tr><th>Produk</th><th>Harga</th><th>Aksi</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="container">
+    <h3>Daftar Pembeli</h3>
+    <table id="daftarPembeli">
+      <thead><tr><th>Nama</th><th>Status</th><th>Aksi</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div id="totalProdukKeseluruhan"></div>
+  </div>
+
+  <script>
+    function tambahKeSelect() {
+      const produkBaru = document.getElementById("produkBaru").value;
+      const hargaBaru = parseInt(document.getElementById("hargaBaru").value);
+      if (!produkBaru || isNaN(hargaBaru)) {
+        alert("Masukkan nama produk dan harga yang valid.");
+        return;
+      }
+      const produk = JSON.parse(localStorage.getItem("produk")) || [];
+      produk.push({ nama: produkBaru, harga: hargaBaru });
+      localStorage.setItem("produk", JSON.stringify(produk));
+      document.getElementById("produkBaru").value = "";
+      document.getElementById("hargaBaru").value = "";
+      renderProduk();
+    }
+
+    function renderProduk() {
+      const select = document.getElementById("produk");
+      const tbody = document.querySelector("#tabelProduk tbody");
+      select.innerHTML = "";
+      tbody.innerHTML = "";
+      const produk = JSON.parse(localStorage.getItem("produk")) || [];
+      produk.forEach((item, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${item.nama} - Rp${item.harga}`;
+        select.appendChild(option);
+
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${item.nama}</td><td>Rp${item.harga}</td><td><button class='btn-hapus' onclick='hapusProduk(${index})'>Hapus</button></td>`;
+        tbody.appendChild(row);
+      });
+    }
+
+    function hapusProduk(index) {
+      const produk = JSON.parse(localStorage.getItem("produk")) || [];
+      produk.splice(index, 1);
+      localStorage.setItem("produk", JSON.stringify(produk));
+      renderProduk();
+    }
+
+    function tambahProduk() {
+      const produk = JSON.parse(localStorage.getItem("produk")) || [];
+      const index = document.getElementById("produk").value;
+      const jumlah = parseInt(document.getElementById("jumlah").value);
+      const keranjang = JSON.parse(localStorage.getItem("keranjang")) || [];
+      keranjang.push({ nama: produk[index].nama, harga: produk[index].harga, jumlah });
+      localStorage.setItem("keranjang", JSON.stringify(keranjang));
+      tampilkanKeranjang();
+    }
+
+    function tampilkanKeranjang() {
+      const keranjang = JSON.parse(localStorage.getItem("keranjang")) || [];
+      const div = document.getElementById("keranjang");
+      div.innerHTML = "<ul>" + keranjang.map(item => `<li>${item.nama} x ${item.jumlah} - Rp${item.harga * item.jumlah}</li>`).join("") + "</ul>";
+    }
+
+    function cetakStruk() {
+      const nama = document.getElementById("namaPembeli").value;
+      const note = document.getElementById("notePembeli").value;
+      const bayar = document.getElementById("bayar").value;
+      const keranjang = JSON.parse(localStorage.getItem("keranjang")) || [];
+      let total = keranjang.reduce((sum, item) => sum + (item.harga * item.jumlah), 0);
+      const struk = document.getElementById("struk");
+      struk.innerHTML = `<div id='strukContent'>
+        <h4>CT CATERING</h4>
+        <p>Lorong Elis Nirwana No 1492 sukabangun 2, Palembang. 30151<br>Telp: 081360996295</p>
+        <hr>
+        <p>Nama Pembeli: ${nama}</p>
+        <p>Catatan: ${note}</p>
+        <ul>${keranjang.map(item => `<li>${item.nama} x ${item.jumlah} - Rp${item.harga * item.jumlah}</li>`).join("")}</ul>
+        <p>Total Bayar: Rp${total}</p>
+        <hr>
+        <p>Payment<br>CINDY ANJELINA BARIN<br>Bank Mandiri<br>1570009775306</p>
+      </div>`;
+      struk.style.display = 'block';
+
+      const content = document.querySelector("#strukContent");
+      html2canvas(content).then(canvas => {
+        const link = document.createElement("a");
+        link.download = "struk.png";
+        link.href = canvas.toDataURL();
+        link.click();
+        hapusStruk();
+      });
+
+      const pembeli = JSON.parse(localStorage.getItem("pembeli")) || [];
+      pembeli.push({ nama, note, status: false, keranjang });
+      localStorage.setItem("pembeli", JSON.stringify(pembeli));
+      renderDaftarPembeli();
+      localStorage.removeItem("keranjang");
+      tampilkanKeranjang();
+    }
+
+    function hapusStruk() {
+      document.getElementById("struk").innerHTML = "";
+      document.getElementById("struk").style.display = "none";
+    }
+
+    function renderDaftarPembeli() {
+      const pembeli = JSON.parse(localStorage.getItem("pembeli")) || [];
+      const tbody = document.querySelector("#daftarPembeli tbody");
+      tbody.innerHTML = "";
+      const totalProduk = {};
+
+      pembeli.forEach((p, i) => {
+        const produkList = p.keranjang ? p.keranjang.map(k => {
+          totalProduk[k.nama] = (totalProduk[k.nama] || 0) + k.jumlah;
+          return `${k.nama} x${k.jumlah}`;
+        }).join(", ") : "";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td class='${p.status ? '' : 'merah'}'>${p.nama}<br><small>${p.note}</small><br><small>${produkList}</small></td>
+          <td><button onclick='toggleStatus(${i})'>${p.status ? 'Sudah' : 'Belum'}</button></td>
+          <td><button class='btn-hapus' onclick='hapusPembeli(${i})'>Hapus</button></td>`;
+        tbody.appendChild(tr);
+      });
+
+      const totalDiv = document.getElementById("totalProdukKeseluruhan");
+      totalDiv.innerHTML = '<h4>Total Produk Keseluruhan</h4>' +
+        Object.entries(totalProduk).map(([nama, jumlah]) => `<p>${nama}: ${jumlah}</p>`).join("");
+    }
+
+    function toggleStatus(i) {
+      const pembeli = JSON.parse(localStorage.getItem("pembeli"));
+      pembeli[i].status = !pembeli[i].status;
+      localStorage.setItem("pembeli", JSON.stringify(pembeli));
+      renderDaftarPembeli();
+    }
+
+    function hapusPembeli(i) {
+      const pembeli = JSON.parse(localStorage.getItem("pembeli"));
+      pembeli.splice(i, 1);
+      localStorage.setItem("pembeli", JSON.stringify(pembeli));
+      renderDaftarPembeli();
+    }
+
+	    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').then(
+          reg => console.log('Service Worker registered', reg.scope),
+          err => console.error('SW registration failed', err)
+        );
+      });
+    }
+    
+    <script>
+  let password = prompt("Masukkan password:");
+  if (password !== "CT%$%$%$") {
+    document.body.innerHTML = "Akses ditolak.";
+  }
+</script>
+
+
+    renderProduk();
+    tampilkanKeranjang();
+    renderDaftarPembeli();
+  </script>
+</body>
+</html>
